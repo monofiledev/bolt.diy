@@ -1,0 +1,50 @@
+name: Bolt DIY Android Build
+on:
+  push:
+    branches: [ "main", "master" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Bolt needs a modern Node version
+          
+      - name: Install & Build Web
+        run: |
+          npm install
+          npm run build # This creates the 'dist' folder
+          
+      - name: Setup Capacitor Android
+        run: |
+          npx cap add android
+          npx cap copy android
+          
+      - name: Inject Android Permissions
+        run: |
+          python -c '
+          import os
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r") as f:
+              data = f.read()
+          # Bolt needs internet and storage to save your DIY projects
+          perms = """<uses-permission android:name="android.permission.INTERNET" />
+          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />"""
+          data = data.replace("<application", perms + "\n    <application")
+          with open(path, "w") as f:
+              f.write(data)
+          '
+
+      - name: Build APK
+        run: |
+          cd android && ./gradlew assembleRelease
+          
+      - name: Upload Bolt APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bolt-DIY-App
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          
