@@ -1,0 +1,6 @@
+{
+  "appId": "com.minddrop.boltdiy",
+  "appName": "Bolt DIY",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
