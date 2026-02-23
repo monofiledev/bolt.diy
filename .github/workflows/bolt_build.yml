@@ -11,29 +11,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Bolt needs a modern Node version
+          node-version: '20'
           
       - name: Install & Build Web
         run: |
           npm install
-          npm run build # This creates the 'dist' folder
+          npm run build
           
       - name: Setup Capacitor Android
         run: |
           npx cap add android
           npx cap copy android
           
-      - name: Inject Android Permissions
+      - name: Inject Android Permissions & App Name
         run: |
           python -c '
-          import os
+          import re
           path = "android/app/src/main/AndroidManifest.xml"
           with open(path, "r") as f:
               data = f.read()
-          # Bolt needs internet and storage to save your DIY projects
+          # Adding Mic and Storage for your DIY projects
           perms = """<uses-permission android:name="android.permission.INTERNET" />
+          <uses-permission android:name="android.permission.RECORD_AUDIO" />
           <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />"""
           data = data.replace("<application", perms + "\n    <application")
+          # Force the clean "Bolt DIY" name
+          data = re.sub(r"android:label=\"[^\"]*\"", "android:label=\"Bolt DIY\"", data)
           with open(path, "w") as f:
               f.write(data)
           '
