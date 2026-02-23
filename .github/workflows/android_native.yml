@@ -1,0 +1,56 @@
+name: Native Android Build
+on:
+  push:
+    branches: [ "main", "master" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install & Build Web Core
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
+          
+      - name: Initialize Capacitor Android
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap add android
+          npx cap copy android
+          
+      - name: Inject Permissions & Clean Name
+        run: |
+          python -c '
+          import re
+          path = "android/app/src/main/AndroidManifest.xml"
+          with open(path, "r") as f:
+              data = f.read()
+          # Adding Mic, Internet, and Storage for DIY work
+          perms = """<uses-permission android:name="android.permission.INTERNET" />
+          <uses-permission android:name="android.permission.RECORD_AUDIO" />
+          <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />"""
+          data = data.replace("<application", perms + "\n    <application")
+          # Regex to ensure "Bolt DIY" appears without underscores
+          data = re.sub(r"android:label=\"[^\"]*\"", "android:label=\"Bolt DIY\"", data)
+          with open(path, "w") as f:
+              f.write(data)
+          '
+
+      - name: Compile Native APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+          
+      - name: Upload Finished APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bolt-Native-App
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          
